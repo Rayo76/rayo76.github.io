@@ -1,0 +1,827 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Universal LLM Prompt Builder V2</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="card intro">
+        <p class="eyebrow">Prompt Engineering Interface</p>
+        <h1>Universal LLM Prompt Builder V3</h1>
+        <p class="lede">
+          Fill in your parameters once and generate a structured JSON prompt you
+          can route to multiple LLM providers.<hr>
+	  Lesser Tokens -> Targeted Outputs ->  Lower Costs -> Lower Computing used -> Better Planet
+	
+        </p>
+      </section>
+
+      <section class="card">
+        <form id="prompt-form" class="form-grid">
+          <div class="full">
+            <p class="tab-title">Prompting Interface</p>
+            <div class="prompt-tabs" role="tablist" aria-label="Prompting Interface Tabs">
+              <button
+                type="button"
+                class="tab-btn active"
+                role="tab"
+                aria-selected="true"
+                aria-controls="textFields"
+                data-prompt-type="text"
+              >
+                Text Prompting
+              </button>
+              <button
+                type="button"
+                class="tab-btn"
+                role="tab"
+                aria-selected="false"
+                aria-controls="imageFields"
+                data-prompt-type="image"
+              >
+                Image Prompting
+              </button>
+              <button
+                type="button"
+                class="tab-btn"
+                role="tab"
+                aria-selected="false"
+                aria-controls="videoFields"
+                data-prompt-type="video"
+              >
+                Video Prompting
+              </button>
+            </div>
+            <input type="hidden" id="promptType" name="promptType" value="text" />
+          </div>
+
+          <div id="textFields" class="full interface-section">
+            <label class="full">
+              Category
+              <select id="category" name="category">
+                <option value="Travel">Travel</option>
+                <option value="Health">Health</option>
+                <option value="Financial Planning">Financial Planning</option>
+                <option value="App/PRD spec">App/PRD spec</option>
+                <option value="Product Comparison">Product Comparison</option>
+                <option value="Resume Optimization">Resume Optimization</option>
+                <option value="Diet & Workout Plan">Diet & Workout Plan</option>
+                <option value="Education & Learning">Education & Learning</option>
+                <option value="Debugging Issues">Debugging Issues</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+
+            <label>
+              Role
+              <input id="role" name="role" type="text" placeholder="Trip planner assistant" />
+            </label>
+
+            <label>
+              Target Audience
+              <input
+                id="targetAudience"
+                name="targetAudience"
+                type="text"
+                placeholder="First-time travelers"
+              />
+            </label>
+
+            <label>
+              Objective
+              <textarea
+                id="objective"
+                name="objective"
+                rows="4"
+                placeholder="Build a 5-day itinerary for Tokyo under a budget."
+              ></textarea>
+            </label>
+
+            <label>
+              Context (Most Crucial)
+              <textarea
+                id="context"
+                name="context"
+                rows="4"
+                placeholder="Budget, constraints, travel dates, preferences, and any key details."
+              ></textarea>
+            </label>
+
+            <label>
+              Must include (one per line)
+              <textarea
+                id="mustInclude"
+                name="mustInclude"
+                rows="4"
+                placeholder="Day-wise plan"
+              ></textarea>
+            </label>
+
+            <label>
+              Must avoid (one per line)
+              <textarea
+                id="mustAvoid"
+                name="mustAvoid"
+                rows="4"
+                placeholder="Unverified assumptions"
+              ></textarea>
+            </label>
+
+            <div class="full guard-grid">
+              <div class="guard-row">
+                <span class="guard-label">
+                  Anti-Hallucination Guard
+                  <span
+                    class="tooltip-icon"
+                    tabindex="0"
+                    role="img"
+                    aria-label="Gives exact data, does not try to guess answers"
+                    title="Gives exact data, does not try to guess answers"
+                    >i</span
+                  >
+                </span>
+                <label class="switch" for="antiHallucinationGuard">
+                  <input
+                    type="checkbox"
+                    id="antiHallucinationGuard"
+                    name="antiHallucinationGuard"
+                    checked
+                  />
+                  <span class="slider" aria-hidden="true"></span>
+                  <span id="guardState">On</span>
+                </label>
+              </div>
+              <div class="guard-row">
+                <span class="guard-label">
+                  Step Locking
+                  <span
+                    class="tooltip-icon"
+                    tabindex="0"
+                    role="img"
+                    aria-label="Clear answers only, saves 40-60 % tokens"
+                    title="Clear answers only, saves 40-60 % tokens"
+                    >i</span
+                  >
+                </span>
+                <label class="switch" for="stepLocking">
+                  <input type="checkbox" id="stepLocking" name="stepLocking" checked />
+                  <span class="slider" aria-hidden="true"></span>
+                  <span id="stepLockState">On</span>
+                </label>
+              </div>
+            </div>
+
+            <label class="full">
+              Output format
+              <select id="outputFormat" name="outputFormat">
+                <option value="plain-text">Plain Text</option>
+                <option value="json">JSON</option>
+              </select>
+            </label>
+
+            <fieldset class="full settings">
+              <legend>Model Controls</legend>
+              <label>
+                Temperature
+                <input
+                  id="temperature"
+                  name="temperature"
+                  type="number"
+                  min="0.1"
+                  max="0.9"
+                  step="0.1"
+                  value="0.5"
+                />
+              </label>
+              <label>
+                Max tokens
+                <input
+                  id="maxTokens"
+                  name="maxTokens"
+                  type="number"
+                  min="0"
+                  max="1000"
+                  step="1"
+                  value="500"
+                />
+                <small class="field-hint">Use 0 for no token limit.</small>
+              </label>
+            </fieldset>
+          </div>
+
+          <div id="imageFields" class="full interface-section" hidden>
+            <label class="full">
+              Image Quality
+              <select id="imageMode" name="imageMode">
+                <option value="basic">Basic</option>
+                <option value="high_quality">High Quality</option>
+              </select>
+            </label>
+
+            <div id="imageBasicFields" class="full mode-section">
+              <label>
+                Subject
+                <input
+                  id="imgBasicSubject"
+                  name="imgBasicSubject"
+                  type="text"
+                  placeholder="Golden retriever wearing pilot goggles"
+                />
+              </label>
+              <label>
+                Style
+                <input
+                  id="imgBasicStyle"
+                  name="imgBasicStyle"
+                  type="text"
+                  placeholder="cinematic realism"
+                />
+              </label>
+              <label>
+                Scene
+                <input
+                  id="imgBasicScene"
+                  name="imgBasicScene"
+                  type="text"
+                  placeholder="sunset beach with flying sand"
+                />
+              </label>
+              <label>
+                Lighting
+                <input
+                  id="imgBasicLighting"
+                  name="imgBasicLighting"
+                  type="text"
+                  placeholder="golden hour backlight"
+                />
+              </label>
+              <label class="full">
+                Composition
+                <input
+                  id="imgBasicComposition"
+                  name="imgBasicComposition"
+                  type="text"
+                  placeholder="rule of thirds, subject on left"
+                />
+              </label>
+            </div>
+
+            <div id="imageHighFields" class="full mode-section" hidden>
+              <div class="section-group">
+                <h3>Subject</h3>
+                <label>
+                  Subject
+                  <input
+                    id="imgHqSubject"
+                    name="imgHqSubject"
+                    type="text"
+                    placeholder="Luxury electric car concept"
+                  />
+                </label>
+                <label>
+                  Type
+                  <input
+                    id="imgSubjectType"
+                    name="imgSubjectType"
+                    type="text"
+                    placeholder="product"
+                  />
+                </label>
+                <label>
+                  Details
+                  <textarea
+                    id="imgSubjectDetails"
+                    name="imgSubjectDetails"
+                    rows="3"
+                    placeholder="brushed aluminum body, blue LED strips, clean silhouette"
+                  ></textarea>
+                </label>
+                <label>
+                  Action
+                  <input
+                    id="imgSubjectAction"
+                    name="imgSubjectAction"
+                    type="text"
+                    placeholder="drifting around a corner with dust trail"
+                  />
+                </label>
+              </div>
+
+              <div class="section-group">
+                <h3>Scene</h3>
+                <label>
+                  Scene
+                  <input
+                    id="imgHqScene"
+                    name="imgHqScene"
+                    type="text"
+                    placeholder="futuristic desert highway"
+                  />
+                </label>
+                <label>
+                  Location
+                  <input id="imgLocation" name="imgLocation" type="text" placeholder="Dubai outskirts" />
+                </label>
+                <label>
+                  Environment
+                  <input
+                    id="imgEnvironment"
+                    name="imgEnvironment"
+                    type="text"
+                    placeholder="minimal architecture, wide open road"
+                  />
+                </label>
+                <label>
+                  Time of Day
+                  <input id="imgTimeOfDay" name="imgTimeOfDay" type="text" placeholder="sunset" />
+                </label>
+                <label class="full">
+                  Weather
+                  <input id="imgWeather" name="imgWeather" type="text" placeholder="clear sky with light haze" />
+                </label>
+              </div>
+
+              <div class="section-group">
+                <h3>Style</h3>
+                <label>
+                  Style
+                  <input
+                    id="imgHqStyle"
+                    name="imgHqStyle"
+                    type="text"
+                    placeholder="high-end automotive ad"
+                  />
+                </label>
+                <label>
+                  Genre
+                  <input id="imgGenre" name="imgGenre" type="text" placeholder="commercial" />
+                </label>
+                <label>
+                  Inspiration
+                  <input
+                    id="imgInspiration"
+                    name="imgInspiration"
+                    type="text"
+                    placeholder="Blade Runner visuals"
+                  />
+                </label>
+                <label>
+                  Realism
+                  <select id="imgRealism" name="imgRealism">
+                    <option value="low">low</option>
+                    <option value="medium">medium</option>
+                    <option value="high">high</option>
+                  </select>
+                </label>
+                <label class="full">
+                  Mood
+                  <input id="imgMood" name="imgMood" type="text" placeholder="bold and aspirational" />
+                </label>
+              </div>
+
+              <div class="section-group">
+                <h3>Visual</h3>
+                <label>
+                  Lighting
+                  <input
+                    id="imgLighting"
+                    name="imgLighting"
+                    type="text"
+                    placeholder="hard side light with rim glow"
+                  />
+                </label>
+                <label>
+                  Colour Palette
+                  <input
+                    id="imgColourPalette"
+                    name="imgColourPalette"
+                    type="text"
+                    placeholder="teal, amber, graphite"
+                  />
+                </label>
+                <label>
+                  Contrast
+                  <input id="imgContrast" name="imgContrast" type="text" placeholder="high contrast" />
+                </label>
+                <label>
+                  Textures
+                  <input
+                    id="imgTextures"
+                    name="imgTextures"
+                    type="text"
+                    placeholder="metallic paint, sand particles"
+                  />
+                </label>
+              </div>
+
+              <div class="section-group">
+                <h3>Camera</h3>
+                <label>
+                  Angle
+                  <input id="imgAngle" name="imgAngle" type="text" placeholder="low front three-quarter" />
+                </label>
+                <label>
+                  Lens
+                  <input id="imgLens" name="imgLens" type="text" placeholder="35mm anamorphic" />
+                </label>
+                <label>
+                  Depth of Field
+                  <input id="imgDepthOfField" name="imgDepthOfField" type="text" placeholder="shallow" />
+                </label>
+                <label>
+                  Focus
+                  <input id="imgFocus" name="imgFocus" type="text" placeholder="car logo and headlights" />
+                </label>
+              </div>
+
+              <div class="section-group">
+                <h3>Composition</h3>
+                <label>
+                  Composition
+                  <input
+                    id="imgHqComposition"
+                    name="imgHqComposition"
+                    type="text"
+                    placeholder="dynamic diagonal composition"
+                  />
+                </label>
+                <label>
+                  Framing
+                  <input id="imgFraming" name="imgFraming" type="text" placeholder="wide hero frame" />
+                </label>
+                <label>
+                  Rule
+                  <select id="imgRule" name="imgRule">
+                    <option value="rule_of_thirds">rule_of_thirds</option>
+                    <option value="centered">centered</option>
+                    <option value="cinematic">cinematic</option>
+                  </select>
+                </label>
+                <label>
+                  Motion
+                  <input id="imgMotion" name="imgMotion" type="text" placeholder="speed streaks and wheel blur" />
+                </label>
+              </div>
+
+              <div class="section-group">
+                <h3>Output</h3>
+                <label>
+                  Resolution
+                  <input id="imgResolution" name="imgResolution" type="text" placeholder="4096x2304" />
+                </label>
+                <label>
+                  Aspect Ratio
+                  <input id="imgAspectRatio" name="imgAspectRatio" type="text" placeholder="16:9" />
+                </label>
+                <label class="full">
+                  Quality
+                  <select id="imgQuality" name="imgQuality">
+                    <option value="standard">standard</option>
+                    <option value="high">high</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="section-group">
+                <h3>Constraints</h3>
+                <label>
+                  Negative Prompt
+                  <textarea
+                    id="imgNegativePrompt"
+                    name="imgNegativePrompt"
+                    rows="3"
+                    placeholder="blurry wheels, warped body, extra logos, watermark"
+                  ></textarea>
+                </label>
+                <label>
+                  Avoid
+                  <textarea
+                    id="imgAvoid"
+                    name="imgAvoid"
+                    rows="3"
+                    placeholder="flat lighting, noisy background"
+                  ></textarea>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div id="videoFields" class="full interface-section" hidden>
+            <label class="full">
+              Video Mode
+              <select id="videoMode" name="videoMode">
+                <option value="basic">Basic</option>
+                <option value="cinematic">Cinematic</option>
+              </select>
+            </label>
+
+            <div id="videoBasicFields" class="full mode-section">
+              <label>
+                Subject
+                <input
+                  id="vidBasicSubject"
+                  name="vidBasicSubject"
+                  type="text"
+                  placeholder="Runner crossing neon city street"
+                />
+              </label>
+              <label>
+                Style
+                <input id="vidBasicStyle" name="vidBasicStyle" type="text" placeholder="cinematic ad" />
+              </label>
+              <label>
+                Scene
+                <input id="vidBasicScene" name="vidBasicScene" type="text" placeholder="rainy downtown at night" />
+              </label>
+              <label>
+                Duration (In seconds)
+                <input
+                  id="vidBasicDuration"
+                  name="vidBasicDuration"
+                  type="number"
+                  min="0"
+                  placeholder="10"
+                />
+              </label>
+              <label class="full">
+                Camera
+                <input
+                  id="vidBasicCamera"
+                  name="vidBasicCamera"
+                  type="text"
+                  placeholder="handheld tracking shot"
+                />
+              </label>
+            </div>
+
+            <div id="videoCinematicFields" class="full mode-section" hidden>
+              <div class="section-group">
+                <h3>Subject</h3>
+                <label>
+                  Subject
+                  <input id="vidSubject" name="vidSubject" type="text" placeholder="Performance sneaker launch hero" />
+                </label>
+                <label>
+                  Type
+                  <input id="vidType" name="vidType" type="text" placeholder="product" />
+                </label>
+                <label>
+                  Details
+                  <textarea
+                    id="vidDetails"
+                    name="vidDetails"
+                    rows="3"
+                    placeholder="matte black sneaker, reflective stripe, dust particles"
+                  ></textarea>
+                </label>
+                <label>
+                  Action
+                  <input id="vidAction" name="vidAction" type="text" placeholder="shoe lands, dust burst, athlete sprints" />
+                </label>
+              </div>
+
+              <div class="section-group">
+                <h3>Scene</h3>
+                <label>
+                  Scene
+                  <input id="vidScene" name="vidScene" type="text" placeholder="urban rooftop at dusk" />
+                </label>
+                <label>
+                  Location
+                  <input id="vidLocation" name="vidLocation" type="text" placeholder="Mumbai skyline rooftop" />
+                </label>
+                <label>
+                  Environment
+                  <input
+                    id="vidEnvironment"
+                    name="vidEnvironment"
+                    type="text"
+                    placeholder="wet concrete with neon reflections"
+                  />
+                </label>
+                <label>
+                  Time of Day
+                  <input id="vidTimeOfDay" name="vidTimeOfDay" type="text" placeholder="blue hour" />
+                </label>
+                <label class="full">
+                  Weather
+                  <input id="vidWeather" name="vidWeather" type="text" placeholder="light drizzle" />
+                </label>
+              </div>
+
+              <div class="section-group">
+                <h3>Sequence</h3>
+                <label>
+                  Shot
+                  <select id="vidShot" name="vidShot">
+                    <option value="wide">wide</option>
+                    <option value="closeup">closeup</option>
+                    <option value="drone">drone</option>
+                  </select>
+                </label>
+                <label>
+                  Action
+                  <input
+                    id="vidSequenceAction"
+                    name="vidSequenceAction"
+                    type="text"
+                    placeholder="wide reveal, then rapid close transition"
+                  />
+                </label>
+                <label class="full">
+                  Duration (In Seconds)
+                  <input
+                    id="vidSequenceDuration"
+                    name="vidSequenceDuration"
+                    type="number"
+                    min="0"
+                    placeholder="12"
+                  />
+                </label>
+              </div>
+
+              <div class="section-group">
+                <h3>Camera</h3>
+                <label>
+                  Movement
+                  <select id="vidMovement" name="vidMovement">
+                    <option value="Pan">Pan</option>
+                    <option value="Tracking">Tracking</option>
+                    <option value="Drone">Drone</option>
+                  </select>
+                </label>
+                <label>
+                  Angle
+                  <input id="vidAngle" name="vidAngle" type="text" placeholder="low tracking angle" />
+                </label>
+                <label>
+                  Lens
+                  <input id="vidLens" name="vidLens" type="text" placeholder="24mm" />
+                </label>
+                <label>
+                  Stabilization
+                  <select id="vidStabilization" name="vidStabilization">
+                    <option value="Smooth">Smooth</option>
+                    <option value="Handheld">Handheld</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="section-group">
+                <h3>Style</h3>
+                <label>
+                  Genre
+                  <input id="vidGenre" name="vidGenre" type="text" placeholder="sports commercial" />
+                </label>
+                <label>
+                  Mood
+                  <input id="vidMood" name="vidMood" type="text" placeholder="high energy" />
+                </label>
+                <label>
+                  Realism
+                  <input id="vidRealism" name="vidRealism" type="text" placeholder="high" />
+                </label>
+                <label>
+                  Reference
+                  <input id="vidReference" name="vidReference" type="text" placeholder="Nike style launch reel" />
+                </label>
+              </div>
+
+              <div class="section-group">
+                <h3>Visual</h3>
+                <label>
+                  Lighting
+                  <input id="vidLighting" name="vidLighting" type="text" placeholder="rim-lit with practical neon" />
+                </label>
+                <label>
+                  Color Grading
+                  <input
+                    id="vidColorGrading"
+                    name="vidColorGrading"
+                    type="text"
+                    placeholder="teal-orange cinematic"
+                  />
+                </label>
+                <label class="full">
+                  Effects
+                  <input id="vidEffects" name="vidEffects" type="text" placeholder="subtle speed ramps and light leaks" />
+                </label>
+              </div>
+
+              <div class="section-group">
+                <h3>Audio</h3>
+                <label>
+                  Music
+                  <input id="vidMusic" name="vidMusic" type="text" placeholder="electronic pulse soundtrack" />
+                </label>
+                <label>
+                  SFX
+                  <input id="vidSfx" name="vidSfx" type="text" placeholder="footsteps, whoosh, city ambience" />
+                </label>
+                <label class="full">
+                  Voiceover
+                  <input id="vidVoiceover" name="vidVoiceover" type="text" placeholder="Move faster. Go further." />
+                </label>
+              </div>
+
+              <div class="section-group">
+                <h3>Output</h3>
+                <label>
+                  Duration (In Seconds)
+                  <input
+                    id="vidOutputDuration"
+                    name="vidOutputDuration"
+                    type="number"
+                    min="0"
+                    placeholder="15"
+                  />
+                </label>
+                <label>
+                  Resolution
+                  <select id="vidResolution" name="vidResolution">
+                    <option value="1080p">1080p</option>
+                    <option value="4K">4K</option>
+                    <option value="8K">8K</option>
+                  </select>
+                </label>
+                <label>
+                  FPS
+                  <input id="vidFps" name="vidFps" type="text" placeholder="24/30/60" />
+                </label>
+                <label>
+                  Aspect Ratio
+                  <input id="vidAspectRatio" name="vidAspectRatio" type="text" placeholder="2.39:1" />
+                </label>
+              </div>
+
+              <div class="section-group">
+                <h3>Constraints</h3>
+                <label>
+                  Negative Prompt
+                  <textarea
+                    id="vidNegativePrompt"
+                    name="vidNegativePrompt"
+                    rows="3"
+                    placeholder="camera jitter, deformed product, unreadable logo, watermark"
+                  ></textarea>
+                </label>
+                <label>
+                  Avoid
+                  <textarea
+                    id="vidAvoid"
+                    name="vidAvoid"
+                    rows="3"
+                    placeholder="overexposed highlights, muddy blacks"
+                  ></textarea>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="actions full">
+            <button type="submit" id="generateBtn">Generate JSON Prompt</button>
+            <span id="status" role="status" aria-live="polite"></span>
+          </div>
+        </form>
+      </section>
+
+      <section class="card" id="generatedPayloadSection" hidden>
+        <div class="output-head">
+          <div class="output-title">
+            <h2>Generated Payload</h2>
+            <p>Portable schema + provider-ready JSON payloads</p>
+          </div>
+        </div>
+        <pre id="output" class="output-box">{}</pre>
+        <div id="tokenEstimate" class="token-estimate" aria-live="polite">
+          Estimated prompt tokens - System: 0, User: 0, Total: 0
+        </div>
+        <div class="output-actions">
+          <button type="button" id="copyChatGptBtn" class="copy-provider-btn">
+            Copy ChatGPT Prompt
+          </button>
+          <button type="button" id="copyClaudeBtn" class="copy-provider-btn">
+            Copy Claude Prompt
+          </button>
+          <button type="button" id="copyGeminiBtn" class="copy-provider-btn">
+            Copy Gemini Prompt
+          </button>
+          <button type="button" id="copyGenericBtn" class="copy-provider-btn">
+            Copy Generic Prompt
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
