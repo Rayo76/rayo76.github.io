@@ -99,6 +99,19 @@ label {
   font-weight: 500;
 }
 
+.field-error {
+  display: block;
+  margin-top: 0.35rem;
+  color: #b6501d;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.input-invalid {
+  border-color: #b6501d !important;
+  outline: 2px solid rgba(182, 80, 29, 0.22) !important;
+}
+
 .tab-title {
   margin: 0 0 0.4rem;
   font-size: 0.92rem;
@@ -420,4 +433,29 @@ button:hover {
     grid-template-columns: 1fr;
   }
 
+}
+
+.privacy-note {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: #fdfaf7;
+  color: var(--ink-1);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+@supports not (color: color-mix(in srgb, white 50%, black 50%)) {
+  .card {
+    background: var(--card);
+    border-color: var(--line);
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus,
+  .tooltip-icon:focus-visible {
+    outline: 2px solid rgba(13, 122, 114, 0.30);
+  }
 }

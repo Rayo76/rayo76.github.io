@@ -1,5 +1,6 @@
 const form = document.getElementById("prompt-form");
 const promptType = document.getElementById("promptType");
+const categorySelect = document.getElementById("category");
 const promptTabButtons = Array.from(document.querySelectorAll(".tab-btn[data-prompt-type]"));
 const textFields = document.getElementById("textFields");
 const imageFields = document.getElementById("imageFields");
@@ -24,6 +25,7 @@ const guardState = document.getElementById("guardState");
 const stepLockState = document.getElementById("stepLockState");
 
 let latestPayload = {};
+let tokenEstimateTimerId = null;
 
 const TEXT_PROCESS_STEPS = [
   "analyze input",
@@ -31,6 +33,101 @@ const TEXT_PROCESS_STEPS = [
   "calculate costs",
   "format output",
 ];
+const TEXT_INPUT_MAX_CHARS = 220;
+const TEXTAREA_MAX_CHARS = 1400;
+const TOKEN_ESTIMATE_DEBOUNCE_MS = 260;
+const REQUIRED_TEXT_FIELD_IDS = ["role", "objective", "context"];
+const TEXT_TIP_FIELDS = {
+  role: document.getElementById("role"),
+  targetAudience: document.getElementById("targetAudience"),
+  objective: document.getElementById("objective"),
+  context: document.getElementById("context"),
+  mustInclude: document.getElementById("mustInclude"),
+  mustAvoid: document.getElementById("mustAvoid"),
+};
+
+const CATEGORY_FIELD_TIPS = {
+  Travel: {
+    role: "Trip planner assistant",
+    targetAudience: "First-time travelers",
+    objective: "Build a 5-day itinerary for Tokyo under a budget.",
+    context: "Budget, constraints, travel dates, preferences, and any key details.",
+    mustInclude: "Day-wise plan",
+    mustAvoid: "Unverified assumptions",
+  },
+  Health: {
+    role: "Preventive health advisor",
+    targetAudience: "Working adults (ages 25-45)",
+    objective: "Create a weekly wellness routine to improve sleep and energy.",
+    context: "Sedentary lifestyle, 9-hour desk job, limited time on weekdays.",
+    mustInclude: "Daily routine checklist",
+    mustAvoid: "Medical diagnosis claims",
+  },
+  "Financial Planning": {
+    role: "Personal finance coach",
+    targetAudience: "Early-career professionals",
+    objective: "Create a monthly budget and savings plan for emergency fund goals.",
+    context: "Income, fixed expenses, variable spending, debt and risk tolerance.",
+    mustInclude: "Savings allocation by category",
+    mustAvoid: "Unrealistic return projections",
+  },
+  "App/PRD spec": {
+    role: "Senior product manager",
+    targetAudience: "Engineering + design teams",
+    objective: "Draft a PRD for a task reminder app with MVP scope.",
+    context: "Target users, business goal, problem statement, release timeline.",
+    mustInclude: "User stories with acceptance criteria",
+    mustAvoid: "Ambiguous feature definitions",
+  },
+  "Product Comparison": {
+    role: "Research analyst",
+    targetAudience: "Purchase decision makers",
+    objective: "Compare 3 project management tools for a 20-person startup.",
+    context: "Pricing limits, integrations, security requirements, team workflow.",
+    mustInclude: "Feature matrix with pros/cons",
+    mustAvoid: "Biased conclusions without evidence",
+  },
+  "Resume Optimization": {
+    role: "ATS resume reviewer",
+    targetAudience: "Software engineer job applicants",
+    objective: "Optimize resume for backend engineer roles in product companies.",
+    context: "Current resume content, target role, years of experience, skills.",
+    mustInclude: "Keyword alignment suggestions",
+    mustAvoid: "Fake achievements",
+  },
+  "Diet & Workout Plan": {
+    role: "Fitness and nutrition planner",
+    targetAudience: "Busy beginners",
+    objective: "Create a 4-week fat-loss plan with home workouts.",
+    context: "Age, weight, activity level, food preferences, equipment availability.",
+    mustInclude: "Meal + workout split by day",
+    mustAvoid: "Extreme calorie deficits",
+  },
+  "Education & Learning": {
+    role: "Learning path coach",
+    targetAudience: "Beginner data science learners",
+    objective: "Create an 8-week study roadmap for Python and machine learning basics.",
+    context: "Available study hours, prior knowledge, preferred learning format.",
+    mustInclude: "Weekly milestones and practice tasks",
+    mustAvoid: "Overloaded daily schedules",
+  },
+  "Debugging Issues": {
+    role: "Senior debugging assistant",
+    targetAudience: "Developers troubleshooting production bugs",
+    objective: "Identify root cause and fix strategy for intermittent API timeout errors.",
+    context: "Error logs, stack trace snippets, environment details, recent deploy changes.",
+    mustInclude: "Reproduction steps and fix validation plan",
+    mustAvoid: "Guess-based fixes without verification",
+  },
+  Other: {
+    role: "",
+    targetAudience: "",
+    objective: "",
+    context: "",
+    mustInclude: "",
+    mustAvoid: "",
+  },
+};
 
 const listFromText = (value) =>
   value
@@ -49,6 +146,177 @@ const clampNumber = (value, min, max, fallback) => {
 };
 
 const getValue = (id) => (document.getElementById(id)?.value || "").trim();
+
+const enforceHttpsIfNeeded = () => {
+  const isHttp = window.location.protocol === "http:";
+  const host = window.location.hostname;
+  const isLocalHost = host === "localhost" || host === "127.0.0.1";
+
+  if (isHttp && !isLocalHost) {
+    const secureUrl = `https://${window.location.host}${window.location.pathname}${window.location.search}${window.location.hash}`;
+    window.location.replace(secureUrl);
+  }
+};
+
+const applyInputConstraints = () => {
+  const textInputs = Array.from(document.querySelectorAll('input[type="text"]'));
+  const textAreas = Array.from(document.querySelectorAll("textarea"));
+  const numberInputs = Array.from(document.querySelectorAll('input[type="number"]'));
+
+  textInputs.forEach((input) => {
+    if (!input.maxLength || input.maxLength < 1) {
+      input.maxLength = TEXT_INPUT_MAX_CHARS;
+    }
+  });
+
+  textAreas.forEach((area) => {
+    if (!area.maxLength || area.maxLength < 1) {
+      area.maxLength = TEXTAREA_MAX_CHARS;
+    }
+  });
+
+  numberInputs.forEach((input) => {
+    input.inputMode = "decimal";
+  });
+};
+
+const isFieldVisible = (field) => field instanceof HTMLElement && !field.closest("[hidden]");
+
+const ensureFieldErrorNode = (field) => {
+  if (!field || !field.id) {
+    return null;
+  }
+
+  const parent = field.parentElement;
+  if (!parent) {
+    return null;
+  }
+
+  let node = parent.querySelector(".field-error");
+  if (!node) {
+    node = document.createElement("small");
+    node.className = "field-error";
+    node.id = `${field.id}-error`;
+    parent.appendChild(node);
+  }
+
+  return node;
+};
+
+const clearFieldError = (field) => {
+  if (!field) {
+    return;
+  }
+
+  field.classList.remove("input-invalid");
+  field.removeAttribute("aria-invalid");
+
+  const parent = field.parentElement;
+  const node = parent ? parent.querySelector(".field-error") : null;
+  if (node) {
+    node.textContent = "";
+    node.hidden = true;
+  }
+};
+
+const showFieldError = (field, message) => {
+  const node = ensureFieldErrorNode(field);
+  if (!node) {
+    return;
+  }
+
+  field.classList.add("input-invalid");
+  field.setAttribute("aria-invalid", "true");
+  field.setAttribute("aria-describedby", node.id);
+  node.textContent = message;
+  node.hidden = false;
+};
+
+const clearAllFieldErrors = () => {
+  const fields = Array.from(form.querySelectorAll("input, textarea, select"));
+  fields.forEach((field) => clearFieldError(field));
+};
+
+const getFieldValidationMessage = (field) => {
+  if (!field || !isFieldVisible(field)) {
+    return "";
+  }
+
+  const id = field.id || "";
+  const value = (field.value || "").trim();
+
+  if (promptType.value === "text" && REQUIRED_TEXT_FIELD_IDS.includes(id) && !value) {
+    return "This field is required.";
+  }
+
+  if (field.matches('input[type="text"], textarea')) {
+    const maxLength = field.maxLength > 0 ? field.maxLength : null;
+    if (maxLength && value.length > maxLength) {
+      return `Maximum ${maxLength} characters allowed.`;
+    }
+  }
+
+  if (field.matches('input[type="number"]')) {
+    if (!value) {
+      return "";
+    }
+
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return "Enter a valid numeric value.";
+    }
+
+    const min = field.min !== "" ? Number(field.min) : null;
+    const max = field.max !== "" ? Number(field.max) : null;
+
+    if (min !== null && parsed < min) {
+      return `Value must be at least ${min}.`;
+    }
+
+    if (max !== null && parsed > max) {
+      return `Value must be at most ${max}.`;
+    }
+  }
+
+  return "";
+};
+
+const validateVisibleFields = () => {
+  const fields = Array.from(form.querySelectorAll("input, textarea, select")).filter(
+    (field) => field.id && isFieldVisible(field)
+  );
+  const fieldErrors = {};
+
+  fields.forEach((field) => {
+    const message = getFieldValidationMessage(field);
+    if (message) {
+      fieldErrors[field.id] = message;
+    }
+  });
+
+  return fieldErrors;
+};
+
+const revalidateFullFormState = () => {
+  const fieldErrors = validateVisibleFields();
+  const errors = Object.values(fieldErrors);
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    fieldErrors,
+  };
+};
+
+const renderFieldValidationErrors = (fieldErrors) => {
+  clearAllFieldErrors();
+  Object.entries(fieldErrors).forEach(([fieldId, message]) => {
+    const field = document.getElementById(fieldId);
+    if (field) {
+      showFieldError(field, message);
+    }
+  });
+};
 
 const pruneEmpty = (value) => {
   if (Array.isArray(value)) {
@@ -332,7 +600,7 @@ const buildImageProviderPayloads = ({ mode, promptObject }) => {
   };
 };
 
-const buildTextPayload = () => {
+const buildTextPayload = ({ skipStrictValidation = false } = {}) => {
   const category = getValue("category") || "Other";
   const role = getValue("role");
   const targetAudience = getValue("targetAudience");
@@ -346,7 +614,7 @@ const buildTextPayload = () => {
   const temperature = Number(clampNumber(getValue("temperature"), 0.1, 0.9, 0.5).toFixed(1));
   const maxTokens = Math.floor(clampNumber(getValue("maxTokens"), 0, 1000, 500));
 
-  if (!role || !objective || !context) {
+  if (!skipStrictValidation && (!role || !objective || !context)) {
     return {
       error: "Role, Objective, and Context are required for Text Prompting.",
     };
@@ -378,7 +646,7 @@ const buildTextPayload = () => {
   return {
     payload: {
       task: "text",
-      spec_version: "V2",
+      spec_version: "V4",
       created_at: new Date().toISOString(),
       category,
       role,
@@ -472,7 +740,7 @@ const buildImagePayload = () => {
   return {
     payload: {
       task: "image",
-      spec_version: "V2",
+      spec_version: "V4",
       created_at: new Date().toISOString(),
       mode,
       prompt: cleanPrompt,
@@ -566,7 +834,7 @@ const buildVideoPayload = () => {
   return {
     payload: {
       task: "video",
-      spec_version: "V2",
+      spec_version: "V4",
       created_at: new Date().toISOString(),
       mode,
       prompt: cleanPrompt,
@@ -692,20 +960,71 @@ const syncVideoModeVisibility = () => {
   videoCinematicFields.hidden = mode !== "cinematic";
 };
 
+const syncCategoryFieldTips = () => {
+  const category = (categorySelect?.value || "Other").trim();
+  const tips = CATEGORY_FIELD_TIPS[category] || CATEGORY_FIELD_TIPS.Other;
+
+  Object.entries(TEXT_TIP_FIELDS).forEach(([key, field]) => {
+    if (!field) {
+      return;
+    }
+    field.placeholder = tips[key] || "";
+  });
+};
+
+const buildPayloadForCurrentType = ({ preview = false } = {}) => {
+  if (promptType.value === "text") {
+    return buildTextPayload({ skipStrictValidation: preview });
+  }
+  if (promptType.value === "image") {
+    return buildImagePayload();
+  }
+  return buildVideoPayload();
+};
+
+const scheduleTokenEstimateUpdate = () => {
+  clearTimeout(tokenEstimateTimerId);
+  tokenEstimateTimerId = setTimeout(() => {
+    const previewResult = buildPayloadForCurrentType({ preview: true });
+    if (previewResult?.payload?.token_estimate) {
+      renderTokenEstimate(previewResult.payload);
+    }
+  }, TOKEN_ESTIMATE_DEBOUNCE_MS);
+};
+
+const validateFieldLive = (field) => {
+  if (!(field instanceof HTMLElement) || !field.id) {
+    return;
+  }
+
+  const message = getFieldValidationMessage(field);
+  if (message) {
+    showFieldError(field, message);
+  } else {
+    clearFieldError(field);
+  }
+};
+
 form.addEventListener("submit", (event) => {
   event.preventDefault();
 
-  let buildResult = null;
-
-  if (promptType.value === "text") {
-    buildResult = buildTextPayload();
-  } else if (promptType.value === "image") {
-    buildResult = buildImagePayload();
-  } else {
-    buildResult = buildVideoPayload();
+  const validation = revalidateFullFormState();
+  if (!validation.valid) {
+    renderFieldValidationErrors(validation.fieldErrors);
+    latestPayload = {};
+    generatedPayloadSection.hidden = true;
+    renderTokenEstimate(latestPayload);
+    setStatus(validation.errors[0], true);
+    return;
   }
 
+  clearAllFieldErrors();
+  const buildResult = buildPayloadForCurrentType();
+
   if (buildResult?.error) {
+    latestPayload = {};
+    generatedPayloadSection.hidden = true;
+    renderTokenEstimate(latestPayload);
     setStatus(buildResult.error, true);
     return;
   }
@@ -739,18 +1058,64 @@ promptTabButtons.forEach((button) => {
     syncActiveTab();
     syncInterfaceVisibility();
     syncProviderButtonsVisibility();
+    clearAllFieldErrors();
+    scheduleTokenEstimateUpdate();
   });
 });
 
-imageMode.addEventListener("change", syncImageModeVisibility);
-videoMode.addEventListener("change", syncVideoModeVisibility);
+imageMode.addEventListener("change", () => {
+  syncImageModeVisibility();
+  clearAllFieldErrors();
+  scheduleTokenEstimateUpdate();
+});
+videoMode.addEventListener("change", () => {
+  syncVideoModeVisibility();
+  clearAllFieldErrors();
+  scheduleTokenEstimateUpdate();
+});
 antiHallucinationGuard.addEventListener("change", syncGuardState);
 stepLocking.addEventListener("change", syncGuardState);
+form.addEventListener("input", (event) => {
+  validateFieldLive(event.target);
+  scheduleTokenEstimateUpdate();
+});
+form.addEventListener("change", (event) => {
+  validateFieldLive(event.target);
+  scheduleTokenEstimateUpdate();
+});
+categorySelect.addEventListener("change", () => {
+  syncCategoryFieldTips();
+  scheduleTokenEstimateUpdate();
+});
 
+
+
+enforceHttpsIfNeeded();
+applyInputConstraints();
 syncGuardState();
 syncActiveTab();
 syncInterfaceVisibility();
 syncProviderButtonsVisibility();
 syncImageModeVisibility();
 syncVideoModeVisibility();
+syncCategoryFieldTips();
 renderTokenEstimate(latestPayload);
+
+
+async function clearClipboardAfterDelay(delayMs = 60000) {
+  if (!navigator.clipboard || !window.isSecureContext) return;
+
+  setTimeout(async () => {
+    try {
+      const current = await navigator.clipboard.readText();
+      if (current) {
+        await navigator.clipboard.writeText('');
+      }
+    } catch {
+      // Clipboard access may be denied by the browser; ignore.
+    }
+  }, delayMs);
+}
+
+await navigator.clipboard.writeText(text);
+clearClipboardAfterDelay(); // Clears clipboard after 60 seconds
