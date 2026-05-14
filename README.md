@@ -25,9 +25,6 @@ Built for efficiency — **fewer tokens, better outputs, lower costs**.
 
 [Open Universal LLM Prompt Builder](https://yourusername.github.io/universal-llm-prompt-builder/) *(update with your link)*
 
-## 📸 Screenshots
-
-*(Add screenshots here after deployment)*
 
 ## 🛠️ How to Use
 
