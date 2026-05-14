@@ -3,6 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- ==================== CONTENT SECURITY POLICY ==================== -->
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self'; 
+                   script-src 'self' 'unsafe-inline'; 
+                   style-src 'self' 'unsafe-inline'; 
+                   font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; 
+                   img-src 'self' data:; 
+                   connect-src 'self'; 
+                   base-uri 'self'; 
+                   form-action 'self'; 
+                   frame-ancestors 'none';">
+    
     <title>Universal LLM Prompt Builder V4</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -11,33 +24,19 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css" />
-    <meta http-equiv="Content-Security-Policy"
-      content="default-src 'self';
-               style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-               font-src 'self' https://fonts.gstatic.com;
-               script-src 'self';
-               img-src 'self' data:;
-               connect-src 'self';
-               object-src 'none';
-               base-uri 'self';
-               frame-ancestors 'none';">
-    <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <meta name="referrer" content="strict-origin-when-cross-origin">
+</head>
 
-  </head>
   <body>
     <main class="shell">
       <section class="card intro">
-        <p class="eyebrow">JSON Prompt Engineering Interface</p>
+        <p class="eyebrow">Prompt Engineering Interface</p>
         <h1>Universal LLM Prompt Builder V4</h1>
         <p class="lede">
           Fill in your parameters once and generate a structured JSON prompt you
-          can route to multiple LLM providers.
-	</p>
-	<hr/>
-	<p class="lede">
+          can route to multiple LLM providers.<hr>
 	  Lesser Tokens -> Targeted Outputs ->  Lower Costs -> Lower Computing used -> Better Planet
-	</p>
+	
+        </p>
       </section>
 
       <section class="card">
@@ -834,10 +833,6 @@
             Copy Generic Prompt
           </button>
         </div>
-	<p class="privacy-note">
-  		Copied prompts may contain sensitive information. Avoid including passwords,
-  		API keys, or confidential personal data.
-	</p>
       </section>
     </main>
 
